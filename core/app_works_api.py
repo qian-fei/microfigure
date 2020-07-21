@@ -30,6 +30,7 @@ def pic_upload_api(user_id):
     图片上传调用接口
     :param user_id: 用户id
     """
+    data_list = []
     try:
         # 参数
         pic_list = request.files.getlist("pic_list[]")
@@ -39,17 +40,15 @@ def pic_upload_api(user_id):
         context = file.upload_file("pic_list[]", "files", user_id)
         if context["code"] == 0:
             return response(msg=context["msg"], code=1, status=400)
-        file_path = context["file_path"]
-        size = context["size"]
-        format = context["format"]
-        return file_path, size, format
+        data_list = context["data"]
+        return data_list
     except Exception as e:
         manage.log.error(e)
         return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
 
 
-def material_upload_common():
-    """素材上传通用接口"""
+def post_material_upload_common():
+    """单个素材上传通用接口"""
     data = {}
     try:
         # 参数
@@ -60,11 +59,9 @@ def material_upload_common():
         context = file.upload_file("pic_list[]", "files", user_id)
         if context["code"] == 0:
             return response(msg=context["msg"], code=1, status=400)
-        file_path = context["file_path"]
-        size = context["size"]
-        format = context["format"]
-        data["file_path"] = file_path
-        data["size"] = size
+        obj = context["data"][0]
+        dada["file_path"] = obj["file_path"]
+        data["size"] = obj["size"]
         return response(data=data)
     except Exception as e:
         manage.log.error(e)
@@ -81,13 +78,13 @@ def post_pic_material_upload(domain=constant.DOMAIN):
         user_id = g.user_data["user_id"]
         if not user_id:
             return response(msg="Bad Request: User not logged in.", code=1, status=400)
-        file_path, size, format = pic_upload_api(user_id)
+        data_list = pic_upload_api(user_id)
         # 入库
         temp_list = []
-        for i in file_path:
+        for obj in data_list:
             uid = base64.b64encode(os.urandom(32)).decode()
-            condition = {"uid": uid, "user_id": user_id, "pic_url": i, "big_pic_url": i, "thumb_url": i, "size": size,
-                         "state": 1, "create_time": int(time.time() * 1000), "update_time": int(time.time() * 1000)
+            condition = {"uid": uid, "user_id": user_id, "pic_url": obj["file_path"], "big_pic_url": obj["file_path"], "thumb_url": obj["file_path"], "size": obj["size"],
+                         "state": 0, "create_time": int(time.time() * 1000), "update_time": int(time.time() * 1000)
             }
             temp_list.append(condition)
         cursor = manage.client["pic_material"].insert(temp_list)

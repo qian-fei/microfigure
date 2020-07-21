@@ -10,7 +10,7 @@ import sys
 import functools
 import pymongo
 from flask_cors import CORS
-from core import app_login_api, app_list_api, app_user_api, app_order_api
+from core import app_login_api, app_list_api, app_user_api, app_order_api, app_works_api
 from core import admin_login_api, admin_index_api, admin_front_api, admin_user_api, admin_opinion_api, admin_operating_api, admin_system_api
 from utils import util
 from flask import Flask, jsonify, request, g
@@ -488,6 +488,30 @@ def user_history_comment():
     return app_user_api.get_user_comment_history()
 
 
+@app.route(f"{url}/user/upload/common", methods=["POST"])
+@auth_user_login
+def user_material_upload():
+    """素材上传通用接口"""
+    return app_works_api.post_material_upload_common()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @app.route(f"{url}/admin/login", methods=["POST"])
 def admin_login():
     """后台登录"""
@@ -746,6 +770,18 @@ def admin_manage_list():
 def admin_manage_search():
     """后台管理员列表接口"""
     return admin_system_api.get_admin_account_search()
+
+
+@app.route(f"{url}/admin/manage/search", methods=["GET"])
+@auth_admin_login
+def admin_manage_search():
+    """后台管理员列表接口"""
+    return admin_system_api.get_admin_account_search()
+
+
+
+
+
 
 
 

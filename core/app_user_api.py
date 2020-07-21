@@ -684,12 +684,16 @@ def pic_material_upload_pic():
         user_id = g.user_data["user_id"]
         if not user_id:
             return response(msg="Bad Request: User not logged in.", code=1, status=400)
-        file_path, size, format = pic_upload_api()
-        uid = base64.b64encode(os.urandom(32)).decode()
-        condition = {"uid": uid, "user_id": user_id, "size": size, "format": format, "state": 1, "big_pic_url": file_path, "pic_id": file_path, "thumb_url": file_path, 
-                     "create_time": int(time.time()) * 1000, "update_time": int(time.time()) * 1000
-        }
-        manage.client["pic_material"].insert(condition)
+        data_list = pic_upload_api(user_id)
+        # 入库
+        temp_list = []
+        for obj in data_list:
+            uid = base64.b64encode(os.urandom(32)).decode()
+            condition = {"uid": uid, "user_id": user_id, "pic_url": obj["file_path"], "big_pic_url": obj["file_path"], "thumb_url": obj["file_path"], "size": obj["size"],
+                         "state": 0, "create_time": int(time.time() * 1000), "update_time": int(time.time() * 1000)
+            }
+            temp_list.append(condition)
+        manage.client["pic_material"].insert(temp_list)
         return response()
     except Exception as e:
         manage.log.error(e)

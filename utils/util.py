@@ -151,7 +151,7 @@ class UploadSmallFile(object):
             "succ_msg": "文件上传成功",
             "fail_msg": "拓展名不符合要求"
         }
-        file_path_list = []
+        data_list = []
         try:
             # 获取文件
             files = flask.request.files.getlist(f"{request_param_name}", None)
@@ -192,15 +192,17 @@ class UploadSmallFile(object):
                 file_path = os.path.join(path_s, uid + file_name + f".{file_extension}")
                 with open(file_path, "wb") as f:
                     f.write(file.read())
+                obj = {}
                 size = os.path.getsize(file_path) // 1024
                 temp_path = f"/{user}/{year_str}/{month_str}/" + uid + file_name + f".{file_extension}"
-                file_path_list.append(temp_path)
+                obj["file_path"] = temp_path
+                obj["size"] = size
+                obj["file_extension"] = file_extension
+                data_list.append(obj)
             context = {
                 "msg": msg["succ_msg"],
                 "code": code["succ"],
-                "file_path": file_path_list,
-                "size": size,
-                "format": file_extension
+                "data": data_list,
             }
             return context
         except Exception as e:
