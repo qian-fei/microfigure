@@ -126,3 +126,8 @@ str = "http://101.136.132.180/20200713103921.png"
 str = str.replace("http", "")
 print(str)
 # print(size)
+import re
+test = "825076979qq.com"
+re = re.match(r'^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}$',test)
+if not re:
+    print('11111111')

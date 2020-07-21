@@ -15,6 +15,7 @@ BASE_DIR2 = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR1)
 sys.path.append(BASE_DIR2)
 
+import re
 import string
 import time
 import random
@@ -854,7 +855,7 @@ def post_audio_material_upload_pic(length_max=32, label_max=20, domain=constant.
 
 def get_pic_wokrs_list(domain=constant.DOMAIN, length_max=32):
     """
-    图片作品列表
+    图片、图集作品列表
     :param domain: 域名
     :param length_max: 长度上限
     """
@@ -867,6 +868,7 @@ def get_pic_wokrs_list(domain=constant.DOMAIN, length_max=32):
         num = request.json.get("num")
         content = request.json.get("content")
         state = request.json.get("state") # 0未审核，1审核中，2已上架, 3全部
+        type = request.args.get("type")
         if not page:
             return response(msg="Bad Request: Miss param 'page'.", code=1, status=400)
         if not num:
@@ -879,9 +881,11 @@ def get_pic_wokrs_list(domain=constant.DOMAIN, length_max=32):
             return response(msg=f"搜索内容最多{length_max}个字符", code=1)
         if state not in ["1", "2", "3", "4"]:
             return response(msg="Bad Request: Param 'state' is error.", code=1, status=400)
+        if type not in ["tp", "tj"]:
+            return response(msg="Bad Request: Param 'type' is error.", code=1, status=400)
         # 查询
         pipeline = [
-            {"$match": {"user_id": user_id, "state": {"$gte": 0}, "title" if content != "detault" else "null": {"$regex": content} if content != "detault" else None, 
+            {"$match": {"user_id": user_id, "state": {"$gte": 0}, "type": type, "title" if content != "detault" else "null": {"$regex": content} if content != "detault" else None, 
                         "state": {"$ne": -1} if state == "3" else int(state)}},
             {"$sort": SON([("create_time", -1)])},
             {"$skip": (int(page) - 1) * int(num)},
@@ -1070,6 +1074,249 @@ def post_pic_portrait(domain=constant.DOMAIN, home_length_max=128, nick_length_m
         }
         manage.client["portrait"].insert(condition)
         return response(data=1) # 1已上传，0未上传
+    except Exception as e:
+        manage.log.error(e)
+        return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
+
+
+def get_pic_property(domain=constant.DOMAIN, home_length_max=128, nick_length_max=64):
+    """
+    物产权
+    :param home_length_max: 地址长度上限
+    :param nick_length_max: 昵称长度上限
+    :param domain: 域名
+    """
+    try:
+        # 参数
+        user_id = g.user_data["user_id"]
+        if not user_id:
+            return response(msg="Bad Request: User not logged in.", code=1, status=400)
+        works_id = request.json.get("works_id")
+        a_name = request.json.get("a_name")
+        a_id_card = request.json.get("a_id_card")
+        a_mobile = request.json.get("a_mobile")
+        a_home_addr = request.json.get("a_home_addr")
+        a_email = request.json.get("a_email")
+        a_property_desc = request.json.get("a_property_desc")
+        a_property_addr = request.json.get("a_property_addr")
+        pic_url = request.json.get("pic_url")
+        b_name = request.json.get("b_name")
+        b_id_card = request.json.get("b_id_card")
+        b_mobile = request.json.get("b_mobile")
+        b_email = request.json.get("b_email")
+        b_home_addr = request.json.get("b_home_addr")
+
+        check = IdCardAuth()
+        rst = re.match(r'^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}$',test)
+        # 校验
+        if not works_id:
+            return response(msg="Bad Request: Miss Param 'works_id'.", code=1, status=400)
+        if not a_name:
+            return response(msg="请输入甲方姓名", code=1)
+        if len(a_name) > nick_length_max:
+            return response(msg=f"甲方姓名最多允许{nick_length_max}个字符", code=1)
+        if not a_mobile:
+            return response(msg="请输入甲方手机号", code=1)
+        if len(str(a_mobile)) != 11:
+            return response(msg="请输入正确的手机号", code=1)
+        if not re.match(r"1[35678]\d{9}", str(a_mobile)):
+            return response(msg="请输入正确的手机号", code=1)
+        if not a_email:
+            return response(msg="请输入甲方邮箱", code=1)
+        if not re.match(r"^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}$", a_email)
+            return response(msg="请输入甲方正确的邮箱", code=1)
+        if not a_id_card:
+            return response(msg="请输入甲方身份证号", code=1)
+        if not check.check_true(a_id_card):
+            return response(msg="请输入甲方正确的身份证号", code=1)
+        if not a_home_addr:
+            return response(msg="请输入甲方地址", code=1)
+        if len(a_home_addr) > home_length_max:
+            return response(msg=f"家庭地址最多允许{home_length_max}个字符", code=1)
+        if not b_property_desc:
+            return response(msg="请输入财产描述", code=1)
+        if not b_property_addr:
+            return response(msg="请输入财产地址", code=1)
+        if not pic_url:
+            return response(msg="请上传参考肖像图", code=1)
+        if not authorizer:
+            return response(msg="请输入授权人信息.", code=1)
+        if not b_name:
+            return response(msg="请输入乙方姓名", code=1)
+        if len(a_name) > nick_length_max:
+            return response(msg=f"乙方姓名最多允许{nick_length_max}个字符", code=1)
+        if not b_id_card:
+            return response(msg="请输入乙方身份证号", code=1)
+        if not check.check_true(b_id_card):
+            return response(msg="请输入乙方正确的身份证号", code=1)
+        if not b_home_addr:
+            return response(msg="请输入乙方地址", code=1)
+        if not b_email:
+            return response(msg="请输入乙方邮箱", code=1)
+        if not re.match(r"^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}$", b_email)
+            return respbonse(msg="请输入乙方正确的邮箱", code=1)
+        if len(str(b_mobile)) != 11:
+            return response(msg="请输入乙方正确的手机号", code=1)
+        if not re.match(r"1[35678]\d{9}", str(b_mobile)):
+            return response(msg="请输入乙方正确的手机号", code=1)
+        pic_url = pic_url.replace(domain, "")
+        uid = base64.b64encode(os.urandom(32)).decode()
+        # 入库
+        condition = {
+            "uid": uid, "user_id": user_id, "works_id": works_id, "a_name": a_name, "a_id_card": a_id_card, "a_mobile": a_mobile, "a_home_addr": a_home_addr, "pic_url": pic_url, 
+            "a_email": a_email, "b_email": b_mobile, "a_property_desc": a_property_desc, "b_name": b_name, "b_id_card": b_id_card, "b_mobile": b_mobile, "b_home_addr": b_home_addr, 
+            "a_property_addr": a_property_addr, "create_time": int(time.time()) * 1000, "update_time": int(time.time()) * 1000
+        }
+        manage.client["property"].insert(condition)
+        return response(data=1) # 1已上传，0未上传
+    except Exception as e:
+        manage.log.error(e)
+        return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
+
+
+def post_pic_apply(label_length_max=20, title_length_max=32):
+    """
+    图片上架申请
+    :param label_length_max: 标签上限
+    :param title_length_max: 标题上限
+    """
+    try:
+        # 参数
+        user_id = g.user_data["user_id"]
+        if not user_id:
+            return response(msg="Bad Request: User not logged in.", code=1, status=400)
+        works_id = request.json.get("works_id")
+        title = request.json.get("title")
+        label = request.json.get("label")
+        tag = request.json.get("tag") # 商/编
+        portrait = request.json.get("portrait") # 1以提交 0 未提交
+        products = request.json.get("products") # 1以提交 0 未提交
+        # 校验
+        if not works_id:
+            return response(msg="Bad Request: Miss param 'works_id'.", code=1, status=400)
+        if not title:
+            return response(msg="Bad Request: Miss param 'title'.", code=1, status=400)
+        if len(title) > title_length_max:
+            return response(msg=f"标题上限{title_length_max}个字符", code=1)
+        if not label:
+            return response(msg="Bad Request: Miss param 'label'.", code=1, status=400)
+        if len(label) > label_length_max:
+            return response(msg=f"最多允许上传{label_length_max}个", code=1)
+        if portrait != 1:
+            return response(msg="请上传肖像权", code=1)
+        if products != 1:
+            return response(msg="请上传物产权", code=1)
+        if tag not in ["商", "编"]:
+            return response(msg="Bad Request: Params 'tag' is error.", code=1, status=400)
+        condition = {
+            "$set": {"title": title, "label": label, "state": 1, "is_portrait": True, "is_products": True, "tag": tag}
+        }
+        doc = manage.client["works"].update({"uid": works_id, "user_id": user_id}, condition)
+        if doc["n"] == 0:
+            return response(msg="Update failed.", code=1, status=400)
+        return response()
+    except Exception as e:
+        manage.log.error(e)
+        return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
+
+
+def post_user_altas_detail(label_length_max=20, title_length_max=32):
+    """
+    图集上架申请详情
+    """
+    try:
+        # 参数
+        user_id = g.user_data["user_id"]
+        if not user_id:
+            return response(msg="Bad Request: User not logged in.", code=1, status=400)
+        works_id = request.json.get("works_id")
+        pipeline = [
+            {"$match": {"user": user_id, "works_id": works_id}},
+            {"$lookup": {"from": "pic_material", "let": {"pic_id": "$pic_id"}, "pipeline": [{"$match": {"$expr": {"$in": ["$uid", "$$pic_id"]}}}], "as": "pic_temp_item"}},
+            {"$addFields": {"pic_item": {"$map": {"input": "$pic_temp_item", "as": "item", "in": {"big_pic_url": {"$concat": [domain, "$$item.big_pic_url"]}, "thumb_url": {"$concat": [domain, "$$item.thumb_url"]},
+                            "uid": "$$item.uid", "works_state": "$$item.works_state"}}}}},
+            {"$project": {"_id": 0, "pic_item": 1, "title": 1, "state": 1, "label": 1}},
+        ]
+        cursor = manage.client["works"].aggregate(pipeline)
+        data_list = [doc for doc in cursor]
+        return response(data=data_list[0] if data_list else {})
+    except Exception as e:
+        manage.log.error(e)
+        return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
+
+
+def post_altas_apply(label_length_max=20, title_length_max=32):
+    """
+    图集上架申请
+    :param label_length_max: 标签上限
+    :param title_length_max: 标题上限
+    """
+    try:
+        # 参数
+        user_id = g.user_data["user_id"]
+        if not user_id:
+            return response(msg="Bad Request: User not logged in.", code=1, status=400)
+        works_id = request.json.get("works_id")
+        title = request.json.get("title")
+        # 校验
+        if not works_id:
+            return response(msg="Bad Request: Miss param 'works_id'.", code=1, status=400)
+        if not title:
+            return response(msg="Bad Request: Miss param 'title'.", code=1, status=400)
+        if len(title) > title_length_max:
+            return response(msg=f"标题上限{title_length_max}个字符", code=1)
+        if not label:
+            return response(msg="Bad Request: Miss param 'label'.", code=1, status=400)
+        if len(label) > label_length_max:
+            return response(msg=f"最多允许上传{label_length_max}个", code=1)
+        doc = manage.client["works"].update({"uid": works_id, "user_id": user_id}, {"$set": {"state": 1}})
+        if doc["n"] == 0:
+            return response(msg="Bad Request: Update failed.", code=1, status=400)
+        return response()
+    except Exception as e:
+        manage.log.error(e)
+        return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
+
+
+def get_article_wokrs_list(domain=constant.DOMAIN, length_max=32):
+    """
+    图文作品列表
+    :param domain: 域名
+    :param length_max: 长度上限
+    """
+    try:
+        # 参数
+        user_id = g.user_data["user_id"]
+        if not user_id:
+            return response(msg="Bad Request: User not logged in.", code=1, status=400)
+        page = request.json.get("page")
+        num = request.json.get("num")
+        content = request.json.get("content")
+        state = request.json.get("state") # 0未审核，1审核中，2已上架, 3全部
+        if not page:
+            return response(msg="Bad Request: Miss param 'page'.", code=1, status=400)
+        if not num:
+            return response(msg="Bad Request: Miss param 'num'.", code=1, status=400)
+        if int(num) < 1 or int(page) < 1:
+            return response(msg="Bad Request: Param 'page' or 'num' is error.", code=1, status=400)
+        if not content:
+            return response(msg="Bad Request: Param 'content'.", code=1, status=400)
+        if len(content) > length_max:
+            return response(msg=f"搜索内容最多{length_max}个字符", code=1)
+        if state not in ["1", "2", "3", "4"]:
+            return response(msg="Bad Request: Param 'state' is error.", code=1, status=400)
+        # 查询
+        pipeline = [
+            {"$match": {"user_id": user_id, "state": {"$gte": 0}, "type": "tw", "title" if content != "detault" else "null": {"$regex": content} if content != "detault" else None, 
+                        "state": {"$ne": -1} if state == "3" else int(state)}},
+            {"$sort": SON([("create_time", -1)])},
+            {"$skip": (int(page) - 1) * int(num)},
+            {"$limit": int(num)},
+            {"$project": {"_id": 0, "uid": 1, "title": 1, "content": 1, "cover_url": {"$concat": [domain, "$cover_url"]}, "state": 1, "create_time": 1}},
+        ]
+        cursor = manage.client["works"].aggregate(pipeline)
+        data_list = [doc for doc in cursor]
+        return response(data=data_list if data_list else [])
     except Exception as e:
         manage.log.error(e)
         return response(msg="Internal Server Error: %s." % str(e), code=1, status=500)
