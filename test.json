@@ -1,0 +1,14 @@
+{
+    "data": [{
+            "uid": "123462",
+            "nick": "我是祖国的花朵",
+            "head_img_url": "http://www.baidu.com/img/1.png",
+            "account": "17725021251",
+            "create_time": 1595130000000,
+            "group": "auth"
+        },
+        ...
+    ],
+    "msg": "Request successful.",
+    "code": 0
+}
